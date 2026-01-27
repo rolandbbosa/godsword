@@ -369,7 +369,7 @@ async function loadPraiseVerses() {
     const container = document.getElementById('praise-verses');
     
     try {
-        // Praise and worship related verses
+        // Praise and worship related verses (expanded list)
         const praiseVerses = [
             'Psalm 100:1',
             'Psalm 150:1',
@@ -385,20 +385,50 @@ async function loadPraiseVerses() {
             'Psalm 113:1',
             'Habakkuk 3:18',
             'Psalm 42:5',
-            'Luke 1:46'
+            'Luke 1:46',
+            'Psalm 63:3',
+            'Psalm 107:1',
+            'Psalm 135:1',
+            '1 Chronicles 16:8',
+            'Psalm 89:1',
+            'Psalm 145:1',
+            'Psalm 92:1',
+            'Psalm 96:1',
+            'Psalm 81:1',
+            'Psalm 66:1'
         ];
+
+        // Check if we have today's praise verses cached
+        const today = new Date().toDateString();
+        const cachedDate = localStorage.getItem('praiseVersesDate');
+        const cachedVerses = localStorage.getItem('praiseVerses');
+
+        let versesToLoad = [];
+
+        if (cachedDate === today && cachedVerses) {
+            try {
+                versesToLoad = JSON.parse(cachedVerses);
+            } catch (error) {
+                console.log('Cache error, generating fresh praise verses');
+                versesToLoad = selectDailyPraiseVerses(praiseVerses);
+            }
+        } else {
+            // Get day-specific selection of praise verses
+            versesToLoad = selectDailyPraiseVerses(praiseVerses);
+            localStorage.setItem('praiseVerses', JSON.stringify(versesToLoad));
+            localStorage.setItem('praiseVersesDate', today);
+        }
 
         let html = '';
         let loadedCount = 0;
 
-        for (const verseRef of praiseVerses) {
+        for (const verseRef of versesToLoad) {
             if (loadedCount >= 6) break; // Load 6 praise verses
             
             try {
                 const response = await fetch(`${RANDOM_VERSE_API}${verseRef}`);
                 if (response.ok) {
                     const data = await response.json();
-                    const verseId = `praise-verse-${loadedCount}`;
                     html += `
                         <div class="praise-verse-card">
                             <div class="praise-verse-ref">${data.reference}</div>
@@ -439,6 +469,19 @@ async function loadPraiseVerses() {
         console.error('Error loading praise verses:', error);
         container.innerHTML = '<p class="no-results">Unable to load praise verses.</p>';
     }
+}
+
+function selectDailyPraiseVerses(praiseVerses) {
+    const dayOfYear = getDayOfYear();
+    const selectedVerses = [];
+    
+    // Select 6 different verses based on the day of year
+    for (let i = 0; i < 6; i++) {
+        const index = (dayOfYear + i) % praiseVerses.length;
+        selectedVerses.push(praiseVerses[index]);
+    }
+    
+    return selectedVerses;
 }
 
 // Share praise verse function - Direct sharing without popups
