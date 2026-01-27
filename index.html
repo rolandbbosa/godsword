@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gods Word - Bible Verses & Praise</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo"><i class="fas fa-book-open"></i> Gods Word</div>
+            <ul class="nav-links">
+                <li><a href="#home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#search" class="nav-link"><i class="fas fa-search"></i> Search</a></li>
+                <li><a href="#praise" class="nav-link"><i class="fas fa-hands-praying"></i> Praise</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Gods Word Section -->
+        <section id="home" class="section">
+            <h1><i class="fas fa-dove"></i> Today's Scripture</h1>
+            <div class="daily-scripture-card">
+                <div id="daily-scripture" class="scripture-content">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading today's scripture...</div>
+                </div>
+                <div class="share-buttons">
+                    <button id="share-facebook" class="share-btn facebook" title="Share on Facebook">
+                        <i class="fab fa-facebook-f"></i> Facebook
+                    </button>
+                    <button id="share-twitter" class="share-btn twitter" title="Share on X">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="x-logo">
+                            <g>
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+                            </g>
+                        </svg> X
+                    </button>
+                    <button id="share-whatsapp" class="share-btn whatsapp" title="Share on WhatsApp">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </button>
+                    <button id="share-instagram" class="share-btn instagram" title="Share on Instagram">
+                        <i class="fab fa-instagram"></i> Instagram
+                    </button>
+                    <button id="copy-link" class="share-btn copy" title="Copy Link">
+                        <i class="fas fa-link"></i> Copy Link
+                    </button>
+                </div>
+                <button id="refresh-daily" class="btn-refresh"><i class="fas fa-rotate-right"></i> Get New Scripture</button>
+            </div>
+        </section>
+
+        <!-- Bible Verse Search Section -->
+        <section id="search" class="section">
+            <h2><i class="fas fa-magnifying-glass"></i> Search Bible Verses</h2>
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input" 
+                    placeholder="Search by book, chapter, verse (e.g., John 3:16)"
+                >
+                <button id="search-btn" class="btn-search"><i class="fas fa-search"></i> Search</button>
+            </div>
+            <div id="search-results" class="search-results"></div>
+        </section>
+
+        <!-- Praise Section -->
+        <section id="praise" class="section praise-section">
+            <h2><i class="fas fa-heart"></i> Praise the Lord</h2>
+            <div class="praise-container">
+                <div class="praise-box">
+                    <h3><i class="fas fa-pen-fancy"></i> Share Your Praise</h3>
+                    <textarea 
+                        id="praise-input" 
+                        class="praise-input" 
+                        placeholder="Share your thoughts, prayers, or praise to the Lord..."
+                        maxlength="500"
+                    ></textarea>
+                    <div class="praise-controls">
+                        <span id="char-count">0/500</span>
+                        <button id="submit-praise" class="btn-praise"><i class="fas fa-paper-plane"></i> Submit Praise</button>
+                    </div>
+                </div>
+
+                <div class="praise-messages">
+                    <h3><i class="fas fa-comment-dots"></i> Praise Messages</h3>
+                    <div id="praise-list" class="praise-list">
+                        <p class="no-messages">No messages yet. Be the first to share!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Words of Praise from Bible -->
+            <div class="praise-verses-section">
+                <h3><i class="fas fa-star"></i> Words of Praise from Scripture</h3>
+                <div id="praise-verses" class="praise-verses-grid">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading praise verses...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p><i class="fas fa-copyright"></i> 2026 Gods Word. Powered by <a href="https://api.bible.com" target="_blank"><i class="fas fa-book"></i> Bible API</a></p>
+            <p class="footer-quote"><i class="fas fa-quote-left"></i> May God's word guide your journey <i class="fas fa-quote-right"></i></p>
+            <p class="footer-credit">Founded by <a href="https://instagram.com/his.roland" target="_blank" class="instagram-link"><i class="fab fa-instagram"></i> Uncertified Pastor</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
