@@ -185,33 +185,38 @@ document.getElementById('refresh-daily').addEventListener('click', () => loadDai
 
 document.getElementById('share-facebook').addEventListener('click', () => {
     if (!currentDailyScripture) return;
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareableUrl)}`;
-    window.open(url, 'facebook-share-dialog', 'width=626,height=436');
-    showToast('Share link opened!');
+    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
+    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareableUrl)}&quote=${encodeURIComponent(verseContent)}`;
+    window.location.href = url;
+    showToast('Opening Facebook...');
 });
 
 document.getElementById('share-twitter').addEventListener('click', () => {
     if (!currentDailyScripture) return;
-    const text = `Gods Word: ${currentDailyScripture.reference} - Check it out!`;
-    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(currentShareableUrl)}`;
-    window.open(url, 'x-share', 'width=550,height=420');
-    showToast('Post ready to share on X!');
+    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
+    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
+    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(verseContent)}&url=${encodeURIComponent(currentShareableUrl)}`;
+    window.location.href = url;
+    showToast('Opening X...');
 });
 
 document.getElementById('share-whatsapp').addEventListener('click', () => {
     if (!currentDailyScripture) return;
-    const text = `📖 Gods Word: ${currentDailyScripture.reference}\n\n${currentDailyScripture.text}\n\n${currentShareableUrl}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-    showToast('WhatsApp ready!');
+    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
+    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(verseContent)}`;
+    window.location.href = url;
+    showToast('Opening WhatsApp...');
 });
 
 document.getElementById('share-instagram').addEventListener('click', () => {
     if (!currentDailyScripture) return;
-    const text = `Gods Word: ${currentDailyScripture.reference}\n\n${currentDailyScripture.text}\n\n${currentShareableUrl}`;
-    const url = `https://instagram.com/direct/inbox/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-    showToast('Instagram DM ready! Copy the verse to share.');
+    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
+    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
+    const url = `https://instagram.com/direct/inbox/?text=${encodeURIComponent(verseContent)}`;
+    window.location.href = url;
+    showToast('Opening Instagram...');
 });
 
 document.getElementById('copy-link').addEventListener('click', async () => {
@@ -429,25 +434,26 @@ async function loadPraiseVerses() {
                 const response = await fetch(`${RANDOM_VERSE_API}${verseRef}`);
                 if (response.ok) {
                     const data = await response.json();
+                    const safeText = escapeHtml(data.text);
                     html += `
                         <div class="praise-verse-card">
                             <div class="praise-verse-ref">${data.reference}</div>
                             <div class="praise-verse-text">${data.text}</div>
                             <div class="praise-verse-buttons">
-                                <button class="verse-share-btn facebook" onclick="sharePraiseVerse('${data.reference}', '${data.text.replace(/'/g, "\\'")}', 'facebook')" title="Share on Facebook">
+                                <button class="verse-share-btn facebook" data-reference="${data.reference}" data-text="${safeText}" data-platform="facebook" title="Share on Facebook">
                                     <i class="fab fa-facebook-f"></i>
                                 </button>
-                                <button class="verse-share-btn twitter" onclick="sharePraiseVerse('${data.reference}', '${data.text.replace(/'/g, "\\'")}', 'twitter')" title="Share on X">
+                                <button class="verse-share-btn twitter" data-reference="${data.reference}" data-text="${safeText}" data-platform="twitter" title="Share on X">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                                         <g>
                                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="currentColor"></path>
                                         </g>
                                     </svg>
                                 </button>
-                                <button class="verse-share-btn whatsapp" onclick="sharePraiseVerse('${data.reference}', '${data.text.replace(/'/g, "\\'")}', 'whatsapp')" title="Share on WhatsApp">
+                                <button class="verse-share-btn whatsapp" data-reference="${data.reference}" data-text="${safeText}" data-platform="whatsapp" title="Share on WhatsApp">
                                     <i class="fab fa-whatsapp"></i>
                                 </button>
-                                <button class="verse-share-btn instagram" onclick="sharePraiseVerse('${data.reference}', '${data.text.replace(/'/g, "\\'")}', 'instagram')" title="Share on Instagram">
+                                <button class="verse-share-btn instagram" data-reference="${data.reference}" data-text="${safeText}" data-platform="instagram" title="Share on Instagram">
                                     <i class="fab fa-instagram"></i>
                                 </button>
                             </div>
@@ -462,6 +468,17 @@ async function loadPraiseVerses() {
 
         if (html) {
             container.innerHTML = html;
+            
+            // Add event listeners to praise verse share buttons
+            const shareButtons = container.querySelectorAll('.verse-share-btn');
+            shareButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const reference = btn.getAttribute('data-reference');
+                    const text = btn.getAttribute('data-text');
+                    const platform = btn.getAttribute('data-platform');
+                    sharePraiseVerse(reference, text, platform);
+                });
+            });
         } else {
             container.innerHTML = '<p class="no-results">Unable to load praise verses. Please refresh.</p>';
         }
@@ -486,19 +503,16 @@ function selectDailyPraiseVerses(praiseVerses) {
 
 // Share praise verse function - Direct sharing without popups
 function sharePraiseVerse(reference, text, platform) {
-    const shareMessage = `We love you alot godsword.pages.dev ♥ 🜲Jesus is King🜲. ​†. ˗ˏˋ ✞ ˎˊ˗ ᴊᴇꜱᴜꜱ`;
-    const verseContent = `${reference}\n\n${text}\n\n${shareMessage}`;
-    const baseUrl = window.location.origin + window.location.pathname;
+    // Decode HTML entities if needed
+    const decodedText = text.replace(/&amp;/g, '&')
+                           .replace(/&lt;/g, '<')
+                           .replace(/&gt;/g, '>')
+                           .replace(/&quot;/g, '"')
+                           .replace(/&#039;/g, "'");
     
-    // Try using Web Share API first (native sharing)
-    if (navigator.share && (platform === 'general')) {
-        navigator.share({
-            title: reference,
-            text: verseContent,
-            url: baseUrl
-        }).catch(err => console.log('Share cancelled'));
-        return;
-    }
+    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
+    const verseContent = `🙏 ${reference}\n\n~ ${decodedText}\n${shareMessage}`;
+    const baseUrl = window.location.origin + window.location.pathname;
     
     // Direct platform sharing
     if (platform === 'facebook') {
