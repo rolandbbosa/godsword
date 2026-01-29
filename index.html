@@ -12,11 +12,10 @@
     <nav class="navbar">
         <div class="container">
             <div class="logo"><i class="fas fa-book-open"></i> Gods Word</div>
-            <ul class="nav-links">
-                <li><a href="#home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="#search" class="nav-link"><i class="fas fa-search"></i> Search</a></li>
-                <li><a href="#praise" class="nav-link"><i class="fas fa-hands-praying"></i> Praise</a></li>
-            </ul>
+                <ul class="nav-links">
+                    <li><a href="#home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="#search" class="nav-link"><i class="fas fa-search"></i> Search</a></li>
+                </ul>
         </div>
     </nav>
 
@@ -68,38 +67,11 @@
             <div id="search-results" class="search-results"></div>
         </section>
 
-        <!-- Praise Section -->
-        <section id="praise" class="section praise-section">
-            <h2><i class="fas fa-heart"></i> Praise the Lord</h2>
-            <div class="praise-container">
-                <div class="praise-box">
-                    <h3><i class="fas fa-pen-fancy"></i> Share Your Praise</h3>
-                    <textarea 
-                        id="praise-input" 
-                        class="praise-input" 
-                        placeholder="Share your thoughts, prayers, or praise to the Lord..."
-                        maxlength="500"
-                    ></textarea>
-                    <div class="praise-controls">
-                        <span id="char-count">0/500</span>
-                        <button id="submit-praise" class="btn-praise"><i class="fas fa-paper-plane"></i> Submit Praise</button>
-                    </div>
-                </div>
-
-                <div class="praise-messages">
-                    <h3><i class="fas fa-comment-dots"></i> Praise Messages</h3>
-                    <div id="praise-list" class="praise-list">
-                        <p class="no-messages">No messages yet. Be the first to share!</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Words of Praise from Bible -->
-            <div class="praise-verses-section">
-                <h3><i class="fas fa-star"></i> Words of Praise from Scripture</h3>
-                <div id="praise-verses" class="praise-verses-grid">
-                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading praise verses...</div>
-                </div>
+        <!-- Words of Praise from Scripture (dynamic random verses) -->
+        <section id="praise-verses-section" class="section praise-verses-section">
+            <h2><i class="fas fa-star"></i> Words of Praise from Scripture</h2>
+            <div id="praise-verses" class="praise-verses-grid">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading praise verses...</div>
             </div>
         </section>
     </div>
@@ -107,9 +79,9 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
-            <p><i class="fas fa-copyright"></i> 2026 Gods Word. Powered by <a href="https://api.bible.com" target="_blank"><i class="fas fa-book"></i> Bible API</a></p>
+            <p><i class="fas fa-copyright"></i> 2026 Gods Word. </p>
             <p class="footer-quote"><i class="fas fa-quote-left"></i> May God's word guide your journey <i class="fas fa-quote-right"></i></p>
-            <p class="footer-credit">Founded by <a href="https://instagram.com/his.roland" target="_blank" class="instagram-link"><i class="fab fa-instagram"></i> Uncertified Pastor</a></p>
+            <p class="footer-credit">Founded by <a style="text-decoration: none;" href="https://instagram.com/his.roland" target="_blank" class="instagram-link"><i class="fab fa-instagram"></i> Uncertified Pastor</a></p>
         </div>
     </footer>
 
