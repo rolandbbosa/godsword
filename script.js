@@ -14,7 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeNavigation();
     loadDailyScripture();
     setupSearchFunctionality();
-    setupPraiseSection();
+    // Load dynamic praise verses (random scriptures)
+    try {
+        loadPraiseVerses();
+    } catch (e) {
+        console.warn('Praise verses loader not available:', e);
+    }
 });
 
 // =====================
