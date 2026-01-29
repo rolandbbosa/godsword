@@ -9,11 +9,205 @@ const STORAGE_DATE_KEY = 'dailyScriptureDate';
 let currentDailyScripture = null;
 let currentShareableUrl = '';
 
+// =====================
+// Text-to-Speech Manager
+// =====================
+class TextToSpeechManager {
+    constructor() {
+        this.synth = window.speechSynthesis;
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.currentUtterance = null;
+        this.currentSentences = [];
+        this.currentIndex = 0;
+        this.currentSection = null;
+        this.highlightedElement = null;
+    }
+
+    splitIntoSentences(text) {
+        // Split by major punctuation followed by space (avoiding over-pausing on abbreviations)
+        // This keeps the text flowing naturally without long pauses at periods, commas, quotes, etc.
+        const sentences = text.split(/(?<=[.!?])\s+/g).filter(s => s.trim().length > 0);
+        return sentences.map(s => s.trim());
+    }
+
+    getVoices() {
+        return this.synth.getVoices();
+    }
+
+    getFemaleVoice() {
+        const voices = this.getVoices();
+        // Try to find a female voice (usually contains "female" or "woman")
+        let femaleVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('woman'));
+        
+        // If no explicit female voice, try common female voice patterns
+        if (!femaleVoice) {
+            femaleVoice = voices.find(v => 
+                v.name.toLowerCase().includes('victoria') ||
+                v.name.toLowerCase().includes('samantha') ||
+                v.name.toLowerCase().includes('moira') ||
+                v.name.toLowerCase().includes('karen') ||
+                v.name.toLowerCase().includes('zira')
+            );
+        }
+        
+        // Fallback to any available voice
+        if (!femaleVoice && voices.length > 0) {
+            femaleVoice = voices[1] || voices[0];
+        }
+        
+        return femaleVoice;
+    }
+
+    speak(text, section) {
+        if (!text) return;
+
+        // Cancel any ongoing speech
+        this.stop();
+
+        this.currentSection = section;
+        this.currentSentences = this.splitIntoSentences(text);
+        this.currentIndex = 0;
+
+        if (this.currentSentences.length === 0) {
+            return;
+        }
+
+        this.isPlaying = true;
+        this.isPaused = false;
+        this.updateControls();
+        this.speakSentence(0);
+    }
+
+    speakSentence(index) {
+        if (index >= this.currentSentences.length) {
+            this.isPlaying = false;
+            this.updateControls();
+            return;
+        }
+
+        const sentence = this.currentSentences[index];
+        this.currentUtterance = new SpeechSynthesisUtterance(sentence);
+        this.currentUtterance.voice = this.getFemaleVoice();
+        this.currentUtterance.rate = this.getCurrentRate();
+        this.currentUtterance.pitch = 1.2; // Slightly higher pitch for clarity
+        this.currentUtterance.volume = 1;
+
+        // Highlight the current sentence in the DOM
+        this.highlightSentence(index);
+
+        this.currentUtterance.onend = () => {
+            this.currentIndex++;
+            this.speakSentence(this.currentIndex);
+        };
+
+        this.currentUtterance.onerror = (event) => {
+            console.error('Speech error:', event);
+            this.currentIndex++;
+            this.speakSentence(this.currentIndex);
+        };
+
+        this.isPlaying = true;
+        this.isPaused = false;
+        this.updateControls();
+        this.synth.speak(this.currentUtterance);
+    }
+
+    highlightSentence(index) {
+        // Remove previous highlight
+        if (this.highlightedElement) {
+            this.highlightedElement.classList.remove('reading-highlight');
+        }
+
+        // Find and highlight the sentence element
+        if (this.currentSection) {
+            const sentenceElements = this.currentSection.querySelectorAll('.sentence');
+            if (sentenceElements[index]) {
+                this.highlightedElement = sentenceElements[index];
+                this.highlightedElement.classList.add('reading-highlight');
+                this.highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+
+    pause() {
+        if (this.isPlaying && !this.isPaused) {
+            this.synth.pause();
+            this.isPaused = true;
+            this.isPlaying = false;
+            this.updateControls();
+        }
+    }
+
+    resume() {
+        if (this.isPaused) {
+            this.synth.resume();
+            this.isPlaying = true;
+            this.isPaused = false;
+            this.updateControls();
+        }
+    }
+
+    stop() {
+        this.synth.cancel();
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.currentIndex = 0;
+
+        // Remove highlight
+        if (this.highlightedElement) {
+            this.highlightedElement.classList.remove('reading-highlight');
+            this.highlightedElement = null;
+        }
+
+        this.updateControls();
+    }
+
+    setRate(rate) {
+        // Fixed rate at 1.0 for natural, consistent reading
+        this.rate = 1.0;
+    }
+
+    getCurrentRate() {
+        // Fixed rate at 1.0 for natural, consistent reading
+        return 1.0;
+    }
+
+    updateControls() {
+        if (this.currentSection && this.currentSection.id) {
+            const prefix = this.currentSection.id === 'daily-scripture' ? 'daily' : 'search';
+            const playBtn = document.getElementById(`${prefix}-play-btn`);
+            const pauseBtn = document.getElementById(`${prefix}-pause-btn`);
+
+            if (playBtn && pauseBtn) {
+                if (this.isPlaying && !this.isPaused) {
+                    playBtn.style.display = 'none';
+                    pauseBtn.style.display = 'flex';
+                } else {
+                    playBtn.style.display = 'flex';
+                    pauseBtn.style.display = 'none';
+                }
+            }
+        }
+    }
+}
+
+// Global TTS Manager
+const ttsManager = new TextToSpeechManager();
+
+// Initialize voices when ready
+if (ttsManager.synth.onvoiceschanged !== undefined) {
+    ttsManager.synth.onvoiceschanged = () => {
+        ttsManager.getVoices();
+    };
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeNavigation();
     loadDailyScripture();
     setupSearchFunctionality();
+    setupReadAloudControls();
     // Load dynamic praise verses (random scriptures)
     try {
         loadPraiseVerses();
@@ -21,6 +215,67 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Praise verses loader not available:', e);
     }
 });
+
+// =====================
+// Read Aloud Controls Setup
+// =====================
+function setupReadAloudControls() {
+    // Daily Scripture Controls
+    const dailyPlayBtn = document.getElementById('daily-play-btn');
+    const dailyPauseBtn = document.getElementById('daily-pause-btn');
+
+    if (dailyPlayBtn) {
+        dailyPlayBtn.addEventListener('click', () => {
+            // If currently paused, resume instead of restarting
+            if (ttsManager.isPaused) {
+                ttsManager.resume();
+                return;
+            }
+
+            const container = document.getElementById('daily-scripture');
+            const text = container.innerText;
+            ttsManager.speak(text, container);
+        });
+    }
+
+    if (dailyPauseBtn) {
+        dailyPauseBtn.addEventListener('click', () => {
+            if (ttsManager.isPlaying) {
+                ttsManager.pause();
+            } else if (ttsManager.isPaused) {
+                ttsManager.resume();
+            }
+        });
+    }
+
+    // Search Results Controls
+    const searchPlayBtn = document.getElementById('search-play-btn');
+    const searchPauseBtn = document.getElementById('search-pause-btn');
+
+    if (searchPlayBtn) {
+        searchPlayBtn.addEventListener('click', () => {
+            // If currently paused, resume instead of restarting
+            if (ttsManager.isPaused) {
+                ttsManager.resume();
+                return;
+            }
+
+            const container = document.getElementById('search-results');
+            const text = container.innerText;
+            ttsManager.speak(text, container);
+        });
+    }
+
+    if (searchPauseBtn) {
+        searchPauseBtn.addEventListener('click', () => {
+            if (ttsManager.isPlaying) {
+                ttsManager.pause();
+            } else if (ttsManager.isPaused) {
+                ttsManager.resume();
+            }
+        });
+    }
+}
 
 // =====================
 // Navigation
@@ -171,11 +426,23 @@ async function getVerseFromAPI(verseString) {
 }
 
 function displayScripture(container, scripture) {
+    // Wrap each sentence in a span for highlighting
+    const text = scripture.text;
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    const wrappedSentences = sentences.map((s, i) => `<span class="sentence">${s.trim()}</span>`).join(' ');
+    
     const html = `
         <div class="scripture-ref">${scripture.reference}</div>
-        <div class="scripture-text">${scripture.text}</div>
+        <div class="scripture-text">${wrappedSentences}</div>
     `;
     container.innerHTML = html;
+    
+    // Show read-aloud controls
+    const controlsId = container.id === 'daily-scripture' ? 'daily-readAloud-controls' : 'search-readAloud-controls';
+    const controls = document.getElementById(controlsId);
+    if (controls) {
+        controls.style.display = 'flex';
+    }
 }
 
 function generateShareableUrl(scripture) {
@@ -260,6 +527,9 @@ async function performSearch() {
 
     if (!query) {
         resultsContainer.innerHTML = '<p class="no-results">Please enter a search term (e.g., "John 3:16" or "love").</p>';
+        // Hide controls for empty search
+        const controls = document.getElementById('search-readAloud-controls');
+        if (controls) controls.style.display = 'none';
         return;
     }
 
@@ -270,6 +540,9 @@ async function performSearch() {
 
         if (!response.ok) {
             resultsContainer.innerHTML = '<p class="no-results">No verses found matching your search. Try a different format like "John 3:16".</p>';
+            // Hide controls for no results
+            const controls = document.getElementById('search-readAloud-controls');
+            if (controls) controls.style.display = 'none';
             return;
         }
 
@@ -277,102 +550,43 @@ async function performSearch() {
 
         if (!data.reference) {
             resultsContainer.innerHTML = '<p class="no-results">No verses found. Try searching by book and chapter, like "Romans 8".</p>';
+            // Hide controls for no results
+            const controls = document.getElementById('search-readAloud-controls');
+            if (controls) controls.style.display = 'none';
             return;
         }
+
+        // Wrap each sentence in a span for highlighting
+        const text = data.text;
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        const wrappedSentences = sentences.map((s, i) => `<span class="sentence">${s.trim()}</span>`).join(' ');
 
         const html = `
             <div class="verse-result">
                 <div class="verse-ref">${data.reference}</div>
-                <div class="verse-text">${data.text}</div>
+                <div class="verse-text">${wrappedSentences}</div>
             </div>
         `;
         resultsContainer.innerHTML = html;
+
+        // Show read-aloud controls
+        const controls = document.getElementById('search-readAloud-controls');
+        if (controls) {
+            controls.style.display = 'flex';
+        }
     } catch (error) {
         console.error('Search error:', error);
         resultsContainer.innerHTML = '<p class="no-results">Error searching the Bible. Please try again.</p>';
+        // Hide controls on error
+        const controls = document.getElementById('search-readAloud-controls');
+        if (controls) controls.style.display = 'none';
     }
 }
 
 // =====================
-// Praise Section
+// Praise Section - Verses Only
 // =====================
-function setupPraiseSection() {
-    const praiseInput = document.getElementById('praise-input');
-    const submitBtn = document.getElementById('submit-praise');
-    const charCount = document.getElementById('char-count');
-
-    // Load praise messages from localStorage
-    loadPraiseMessages();
-    
-    // Load praise verses from Bible API
-    loadPraiseVerses();
-
-    // Update character count
-    praiseInput.addEventListener('input', (e) => {
-        const count = e.target.value.length;
-        charCount.textContent = `${count}/500`;
-    });
-
-    // Submit praise
-    submitBtn.addEventListener('click', () => {
-        const praise = praiseInput.value.trim();
-        if (!praise) {
-            showToast('Please write something first!', 'error');
-            return;
-        }
-
-        addPraiseMessage(praise);
-        praiseInput.value = '';
-        charCount.textContent = '0/500';
-        showToast('Praise submitted! 🙌', 'success');
-    });
-
-    // Allow Enter+Ctrl to submit
-    praiseInput.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            submitBtn.click();
-        }
-    });
-}
-
-function addPraiseMessage(text) {
-    const messages = getPraiseMessages();
-    const newMessage = {
-        id: Date.now(),
-        text: text,
-        timestamp: new Date().toLocaleString()
-    };
-
-    messages.unshift(newMessage);
-    localStorage.setItem('praiseMessages', JSON.stringify(messages));
-    loadPraiseMessages();
-}
-
-function getPraiseMessages() {
-    const stored = localStorage.getItem('praiseMessages');
-    return stored ? JSON.parse(stored) : [];
-}
-
-function loadPraiseMessages() {
-    const messages = getPraiseMessages();
-    const praiseList = document.getElementById('praise-list');
-
-    if (messages.length === 0) {
-        praiseList.innerHTML = '<p class="no-messages">No messages yet. Be the first to share!</p>';
-        return;
-    }
-
-    let html = '';
-    messages.forEach(msg => {
-        html += `
-            <div class="praise-item">
-                <p>${escapeHtml(msg.text)}</p>
-                <div class="praise-time">${msg.timestamp}</div>
-            </div>
-        `;
-    });
-    praiseList.innerHTML = html;
-}
+// Note: Praise messaging UI removed. Only dynamic praise verses loaded.
 
 // Load praise verses from Bible API
 async function loadPraiseVerses() {
