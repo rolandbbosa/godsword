@@ -22,7 +22,13 @@
     <div class="container">
         <!-- Gods Word Section -->
         <section id="home" class="section">
-            <h1><i class="fas fa-dove"></i> Today's Scripture</h1>
+            <div class="section-header">
+                <h1><i class="fas fa-dove"></i> Today's Scripture</h1>
+                <div class="read-aloud-controls" id="daily-readAloud-controls" style="display: none;">
+                    <button id="daily-play-btn" class="read-btn play-btn" title="Play"><i class="fas fa-play"></i></button>
+                    <button id="daily-pause-btn" class="read-btn pause-btn" title="Pause" style="display: none;"><i class="fas fa-pause"></i></button>
+                </div>
+            </div>
             <div class="daily-scripture-card">
                 <div id="daily-scripture" class="scripture-content">
                     <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading today's scripture...</div>
@@ -54,7 +60,13 @@
 
         <!-- Bible Verse Search Section -->
         <section id="search" class="section">
-            <h2><i class="fas fa-magnifying-glass"></i> Search Bible Verses</h2>
+            <div class="section-header">
+                <h2><i class="fas fa-magnifying-glass"></i> Search Bible Verses</h2>
+                <div class="read-aloud-controls" id="search-readAloud-controls" style="display: none;">
+                    <button id="search-play-btn" class="read-btn play-btn" title="Play"><i class="fas fa-play"></i></button>
+                    <button id="search-pause-btn" class="read-btn pause-btn" title="Pause" style="display: none;"><i class="fas fa-pause"></i></button>
+                </div>
+            </div>
             <div class="search-container">
                 <input 
                     type="text" 
@@ -79,9 +91,9 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
-            <p><i class="fas fa-copyright"></i> 2026 Gods Word. </p>
+            <p><i class="fas fa-copyright"></i> 2026 Gods Word. Powered by <a href="https://api.bible.com" target="_blank"><i class="fas fa-book"></i> Bible API</a></p>
             <p class="footer-quote"><i class="fas fa-quote-left"></i> May God's word guide your journey <i class="fas fa-quote-right"></i></p>
-            <p class="footer-credit">Founded by <a style="text-decoration: none;" href="https://instagram.com/his.roland" target="_blank" class="instagram-link"><i class="fab fa-instagram"></i> Uncertified Pastor</a></p>
+            <p class="footer-credit">Founded by <a href="https://instagram.com/his.roland" target="_blank" class="instagram-link"><i class="fab fa-instagram"></i> Uncertified Pastor</a></p>
         </div>
     </footer>
 
