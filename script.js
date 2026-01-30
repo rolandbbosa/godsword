@@ -22,6 +22,9 @@ class TextToSpeechManager {
         this.currentIndex = 0;
         this.currentSection = null;
         this.highlightedElement = null;
+        this.preferredPitch = 0.45; // Deep male voice pitch
+        this.preferredRate = 0.85; // Slightly slower for gravitas
+        this.preferredVolume = 1.0; // Full volume
     }
 
     splitIntoSentences(text) {
@@ -117,16 +120,16 @@ class TextToSpeechManager {
         // Remove previous highlight
         if (this.highlightedElement) {
             this.highlightedElement.classList.remove('reading-highlight');
+            this.highlightedElement = null;
         }
 
-        // Find and highlight the sentence element
-        if (this.currentSection) {
-            const sentenceElements = this.currentSection.querySelectorAll('.sentence');
-            if (sentenceElements[index]) {
-                this.highlightedElement = sentenceElements[index];
-                this.highlightedElement.classList.add('reading-highlight');
-                this.highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+        // Find and highlight the sentence element (gracefully skip if section is null)
+        if (!this.currentSection) return;
+        const sentenceElements = this.currentSection.querySelectorAll('.sentence');
+        if (sentenceElements[index]) {
+            this.highlightedElement = sentenceElements[index];
+            this.highlightedElement.classList.add('reading-highlight');
+            this.highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
@@ -164,13 +167,19 @@ class TextToSpeechManager {
     }
 
     setRate(rate) {
-        // Fixed rate at 1.0 for natural, consistent reading
-        this.rate = 1.0;
+        if (typeof rate === 'number' && rate > 0) {
+            this.preferredRate = rate;
+        }
     }
 
     getCurrentRate() {
-        // Fixed rate at 1.0 for natural, consistent reading
-        return 1.0;
+        return this.preferredRate || 0.85;
+    }
+
+    setVoiceProfile({ pitch, rate, volume } = {}) {
+        if (typeof pitch === 'number' && pitch > 0) this.preferredPitch = pitch;
+        if (typeof rate === 'number' && rate > 0) this.preferredRate = rate;
+        if (typeof volume === 'number') this.preferredVolume = Math.max(0, Math.min(1, volume));
     }
 
     updateControls() {
@@ -208,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDailyScripture();
     setupSearchFunctionality();
     setupReadAloudControls();
+    setupShareButtons();
     // Load dynamic praise verses (random scriptures)
     try {
         loadPraiseVerses();
@@ -280,15 +290,53 @@ function setupReadAloudControls() {
 // =====================
 // Navigation
 // =====================
+let navigationInitialized = false;
+
 function initializeNavigation() {
+    // Prevent duplicate initialization
+    if (navigationInitialized) return;
+    navigationInitialized = true;
+
     const navLinks = document.querySelectorAll('.nav-link');
-    
+    const sections = Array.from(document.querySelectorAll('section[id]'));
+
+    if (!navLinks.length || !sections.length) return;
+
+    // Smooth scroll and click active handling
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').replace('#', '');
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
             navLinks.forEach(l => l.classList.remove('active'));
             link.classList.add('active');
         });
     });
+
+    // Highlight nav item based on scroll position
+    function onScroll() {
+        const scrollPos = window.scrollY + Math.max(window.innerHeight * 0.1, 80);
+        let current = sections[0];
+        for (const sec of sections) {
+            const rect = sec.getBoundingClientRect();
+            const top = window.scrollY + rect.top;
+            if (scrollPos >= top) current = sec;
+        }
+
+        const id = current ? current.id : null;
+        if (!id) return;
+        navLinks.forEach(l => {
+            const href = l.getAttribute('href').replace('#', '');
+            if (href === id) l.classList.add('active'); else l.classList.remove('active');
+        });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Run once to initialize
+    onScroll();
 }
 
 // =====================
@@ -402,9 +450,13 @@ function getDayOfYear() {
     return Math.floor(diff / oneDay);
 }
 
-async function getVerseFromAPI(verseString) {
+async function getVerseFromAPI(verseString, timeout = 8000) {
     try {
-        const response = await fetch(`${RANDOM_VERSE_API}${verseString}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        const response = await fetch(`${RANDOM_VERSE_API}${verseString}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
             throw new Error(`Verse "${verseString}" not found (HTTP ${response.status})`);
@@ -426,13 +478,14 @@ async function getVerseFromAPI(verseString) {
 }
 
 function displayScripture(container, scripture) {
-    // Wrap each sentence in a span for highlighting
-    const text = scripture.text;
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    const wrappedSentences = sentences.map((s, i) => `<span class="sentence">${s.trim()}</span>`).join(' ');
+    if (!container) return;
+    // Wrap each sentence in a span for highlighting; improved regex to handle abbreviations
+    const text = scripture.text || '';
+    const sentences = text.match(/[^.!?]*[.!?]+(?=\s|$)/g) || [text];
+    const wrappedSentences = sentences.map((s) => `<span class="sentence">${escapeHtml(s.trim())}</span>`).join(' ');
     
     const html = `
-        <div class="scripture-ref">${scripture.reference}</div>
+        <div class="scripture-ref">${escapeHtml(scripture.reference || '')}</div>
         <div class="scripture-text">${wrappedSentences}</div>
     `;
     container.innerHTML = html;
@@ -452,61 +505,80 @@ function generateShareableUrl(scripture) {
     return `${baseUrl}?daily=${verseInfo}`;
 }
 
-// Share buttons
-document.getElementById('refresh-daily').addEventListener('click', () => loadDailyScripture(true));
+// Share message constant
+const SHARE_MESSAGE = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
 
-document.getElementById('share-facebook').addEventListener('click', () => {
-    if (!currentDailyScripture) return;
-    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
-    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareableUrl)}&quote=${encodeURIComponent(verseContent)}`;
-    window.location.href = url;
-    showToast('Opening Facebook...');
-});
-
-document.getElementById('share-twitter').addEventListener('click', () => {
-    if (!currentDailyScripture) return;
-    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
-    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
-    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(verseContent)}&url=${encodeURIComponent(currentShareableUrl)}`;
-    window.location.href = url;
-    showToast('Opening X...');
-});
-
-document.getElementById('share-whatsapp').addEventListener('click', () => {
-    if (!currentDailyScripture) return;
-    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
-    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(verseContent)}`;
-    window.location.href = url;
-    showToast('Opening WhatsApp...');
-});
-
-document.getElementById('share-instagram').addEventListener('click', () => {
-    if (!currentDailyScripture) return;
-    const shareMessage = `godsword.pages.dev 🜲Jesus is King🜲.\n\n`;
-    const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${shareMessage}`;
-    const url = `https://instagram.com/direct/inbox/?text=${encodeURIComponent(verseContent)}`;
-    window.location.href = url;
-    showToast('Opening Instagram...');
-});
-
-document.getElementById('copy-link').addEventListener('click', async () => {
-    if (!currentShareableUrl) return;
-    try {
-        await navigator.clipboard.writeText(currentShareableUrl);
-        showToast('Link copied to clipboard!', 'success');
-    } catch (err) {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = currentShareableUrl;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        showToast('Link copied to clipboard!', 'success');
+// Setup share buttons (moved into DOMContentLoaded to ensure DOM is ready)
+function setupShareButtons() {
+    const refreshBtn = document.getElementById('refresh-daily');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => loadDailyScripture(true));
     }
-});
+
+    const fbBtn = document.getElementById('share-facebook');
+    if (fbBtn) {
+        fbBtn.addEventListener('click', () => {
+            if (!currentDailyScripture) return;
+            const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${SHARE_MESSAGE}`;
+            const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareableUrl)}&quote=${encodeURIComponent(verseContent)}`;
+            window.location.href = url;
+            showToast('Opening Facebook...');
+        });
+    }
+
+    const twitterBtn = document.getElementById('share-twitter');
+    if (twitterBtn) {
+        twitterBtn.addEventListener('click', () => {
+            if (!currentDailyScripture) return;
+            const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${SHARE_MESSAGE}`;
+            const url = `https://x.com/intent/tweet?text=${encodeURIComponent(verseContent)}&url=${encodeURIComponent(currentShareableUrl)}`;
+            window.location.href = url;
+            showToast('Opening X...');
+        });
+    }
+
+    const waBtn = document.getElementById('share-whatsapp');
+    if (waBtn) {
+        waBtn.addEventListener('click', () => {
+            if (!currentDailyScripture) return;
+            const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${SHARE_MESSAGE}`;
+            const url = `https://wa.me/?text=${encodeURIComponent(verseContent)}`;
+            window.location.href = url;
+            showToast('Opening WhatsApp...');
+        });
+    }
+
+    const igBtn = document.getElementById('share-instagram');
+    if (igBtn) {
+        igBtn.addEventListener('click', () => {
+            if (!currentDailyScripture) return;
+            const verseContent = `📖 ${currentDailyScripture.reference}\n\n~ ${currentDailyScripture.text}\n${SHARE_MESSAGE}`;
+            const url = `https://instagram.com/direct/inbox/?text=${encodeURIComponent(verseContent)}`;
+            window.location.href = url;
+            showToast('Opening Instagram...');
+        });
+    }
+
+    const copyBtn = document.getElementById('copy-link');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            if (!currentShareableUrl) return;
+            try {
+                await navigator.clipboard.writeText(currentShareableUrl);
+                showToast('Link copied to clipboard!', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = currentShareableUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Link copied to clipboard!', 'success');
+            }
+        });
+    }
+}
 
 // =====================
 // Search Functionality
@@ -515,6 +587,7 @@ function setupSearchFunctionality() {
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
 
+    if (!searchBtn || !searchInput) return;
     searchBtn.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch();
@@ -536,7 +609,10 @@ async function performSearch() {
     resultsContainer.innerHTML = '<div class="loading">Searching the Bible...</div>';
 
     try {
-        const response = await fetch(`${RANDOM_VERSE_API}${encodeURIComponent(query)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(`${RANDOM_VERSE_API}${encodeURIComponent(query)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             resultsContainer.innerHTML = '<p class="no-results">No verses found matching your search. Try a different format like "John 3:16".</p>';
@@ -556,14 +632,14 @@ async function performSearch() {
             return;
         }
 
-        // Wrap each sentence in a span for highlighting
-        const text = data.text;
-        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-        const wrappedSentences = sentences.map((s, i) => `<span class="sentence">${s.trim()}</span>`).join(' ');
+        // Wrap each sentence in a span for highlighting; improved regex to handle abbreviations
+        const text = data.text || '';
+        const sentences = text.match(/[^.!?]*[.!?]+(?=\s|$)/g) || [text];
+        const wrappedSentences = sentences.map((s) => `<span class="sentence">${escapeHtml(s.trim())}</span>`).join(' ');
 
         const html = `
             <div class="verse-result">
-                <div class="verse-ref">${data.reference}</div>
+                <div class="verse-ref">${escapeHtml(data.reference || '')}</div>
                 <div class="verse-text">${wrappedSentences}</div>
             </div>
         `;
